@@ -1,0 +1,28 @@
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 3px;
+  padding: 8px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.card-grid.short-deck {
+  grid-template-columns: repeat(9, 1fr);
+}
+.card-btn {
+  aspect-ratio: 0.7;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px;
+  min-height: 36px;
+  transition: all 0.15s;
+}
+.card-btn.card-red { color: #dc2626; }
+.card-btn.card-black { color: #1a1a1a; }
+.card-btn:hover:not(:disabled) { border-color: #2563eb; }
+.card-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.card-btn.card-selected { background: #2563eb; color: white; border-color: #2563eb; }
