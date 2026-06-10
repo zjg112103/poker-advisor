@@ -1,0 +1,89 @@
+.betting-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 20px;
+}
+
+.stage-badge {
+  display: inline-block;
+  background: #f59e0b;
+  color: #0f172a;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.hole-cards-display,
+.board-display {
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.pot-info {
+  display: flex;
+  justify-content: space-between;
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.pot-info strong {
+  color: #f59e0b;
+}
+
+.actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-type {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.action-amount {
+  width: 80px;
+  padding: 10px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.action-amount:disabled,
+.action-type:disabled {
+  opacity: 0.5;
+}
+
+.action-locked {
+  opacity: 0.6;
+}
+
+.add-action-btn {
+  padding: 8px;
+  border: 1px dashed #334155;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.add-action-btn:hover {
+  border-color: #64748b;
+  color: #e2e8f0;
+}

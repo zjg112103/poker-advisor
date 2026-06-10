@@ -1,0 +1,83 @@
+.result-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 20px;
+}
+
+.result-card {
+  text-align: center;
+  padding: 24px;
+  border: 3px solid;
+  border-radius: 12px;
+  background: #1e293b;
+}
+
+.result-action {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.result-equity {
+  font-size: 1.5rem;
+  color: #e2e8f0;
+  margin-top: 8px;
+}
+
+.result-hand-type {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.result-reason {
+  text-align: center;
+  padding: 12px;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.result-pot-odds {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.result-confidence {
+  text-align: center;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.confidence-high {
+  color: #22c55e;
+}
+
+.confidence-medium {
+  color: #f59e0b;
+}
+
+.confidence-low {
+  color: #ef4444;
+}
+
+.result-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.secondary-btn {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  border-color: #64748b;
+}
