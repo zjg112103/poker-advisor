@@ -1,0 +1,73 @@
+.setup-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 20px;
+}
+
+.app-title {
+  text-align: center;
+  font-size: 1.5rem;
+  color: #f59e0b;
+  padding: 12px 0;
+}
+
+.setup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setup-label {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.toggle-group,
+.player-count-group,
+.position-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toggle-btn,
+.count-btn,
+.pos-btn {
+  padding: 8px 12px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.toggle-btn.active,
+.count-btn.active,
+.pos-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.primary-btn:disabled {
+  background: #334155;
+  cursor: not-allowed;
+}
+
+.primary-btn:active:not(:disabled) {
+  background: #1d4ed8;
+}
