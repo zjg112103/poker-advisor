@@ -25,11 +25,8 @@ export function createHoleCardsScreen(gameState, onComplete) {
   const selectedCards = [];
 
   // -- card grid -----------------------------------------------------------
-  const grid = createCardGrid({
-    isShortDeck: gameState.isShortDeck,
-    onSelect: handleSelect,
-    maxSelect: 2,
-  });
+  const usedCards = [];
+  const grid = createCardGrid(handleSelect, usedCards, gameState.isShortDeck);
   screen.appendChild(grid);
 
   // -- selected cards display ----------------------------------------------

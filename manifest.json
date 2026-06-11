@@ -1,0 +1,8 @@
+{
+  "name": "Poker Advisor",
+  "short_name": "Poker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb"
+}
