@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { STORAGE_KEY, HandHistory } from '../../js/storage/history.js';
 

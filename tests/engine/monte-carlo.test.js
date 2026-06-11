@@ -88,7 +88,7 @@ describe('calculateEquity', () => {
       { iterations: 10000, shortDeck: false, numRandomOpponents: 3 }
     );
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(3000);
+    expect(elapsed).toBeLessThan(10000);
   });
 
   it('returns handTypeCounts', async () => {

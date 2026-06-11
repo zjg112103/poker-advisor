@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout 10 npx vite --host)",
+      "Bash(node:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(npx vitest:*)",
+      "Bash(sed:*)",
+      "Bash(npm ls:*)",
+      "Bash(timeout 5 npx vite)"
+    ]
+  }
+}
