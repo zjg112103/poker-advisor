@@ -6,9 +6,9 @@ import { cardToString } from '../../engine/card.js';
 import { createCardGrid } from '../card-selector.js';
 
 const STAGE_LABELS = {
-  flop: '翻牌',
-  turn: '转牌',
-  river: '河牌',
+  preflop: '翻牌',
+  flop: '转牌',
+  turn: '河牌',
 };
 
 /**
@@ -24,11 +24,17 @@ export function createCommunityCardsScreen(gameState, numCards, onComplete) {
   const screen = document.createElement('div');
   screen.className = 'screen community-cards-screen';
 
-  // -- header ---------------------------------------------------------------
+  // -- header
   const header = document.createElement('h2');
   header.className = 'screen-header';
   header.textContent = '选择' + stageLabel + '牌 (' + numCards + '张)';
   screen.appendChild(header);
+
+  // -- hint
+  const hint = document.createElement('div');
+  hint.className = 'selected-info';
+  hint.textContent = '点击选牌，再次点击取消选择';
+  screen.appendChild(hint);
 
   // -- existing board cards display -----------------------------------------
   if (gameState.boardCards && gameState.boardCards.length > 0) {
@@ -79,15 +85,14 @@ export function createCommunityCardsScreen(gameState, numCards, onComplete) {
   function handleSelect(card) {
     const idx = findCardIndex(selectedCards, card);
     if (idx !== -1) {
-      // deselect
       selectedCards.splice(idx, 1);
     } else if (selectedCards.length < numCards) {
       selectedCards.push(card);
     } else {
-      // already have enough cards, ignore
-      return;
+      return false; // reject - already full
     }
     updateUI();
+    return true;
   }
 
   function updateUI() {

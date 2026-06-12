@@ -1,31 +1,42 @@
 /**
  * Game State Tracker for poker game flow management.
- * Tracks stages, positions, pot, and player actions.
+ * Tracks stages, positions, pot, per-seat actions, and action order.
  */
+import { inferOpponentRange } from '../engine/ranges.js';
 
 export const STAGES = ['setup', 'preflop', 'flop', 'turn', 'river', 'showdown'];
 
-export const POSITIONS_9 = ['SB', 'BB', 'UTG', 'UTG1', 'MP', 'MP1', 'HJ', 'CO', 'BTN'];
-export const POSITIONS_6 = ['SB', 'BB', 'UTG', 'MP', 'CO', 'BTN'];
-export const POSITIONS_4 = ['SB', 'BB', 'SB2', 'BTN'];
+export const POSITIONS_9 = ['UTG', 'UTG1', 'MP', 'MP1', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+export const POSITIONS_6 = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'];
+export const POSITIONS_4 = ['BTN', 'SB', 'BB', 'UTG'];
 export const POSITIONS_2 = ['SB', 'BB'];
 
-const POSITIONS_MAP = {
-  9: POSITIONS_9,
-  6: POSITIONS_6,
-  4: POSITIONS_4,
-  2: POSITIONS_2,
+// Positions in clockwise order, matching setup-screen POSITION_SETS
+const POSITIONS_BY_COUNT = {
+  '2': POSITIONS_2,
+  '3': ['BTN', 'SB', 'BB'],
+  '4': POSITIONS_4,
+  '5': ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'],
+  '6': POSITIONS_6,
+  '7': ['UTG', 'UTG1', 'MP', 'MP1', 'CO', 'BTN', 'SB', 'BB'],
+  '8': ['UTG', 'UTG1', 'MP', 'MP1', 'CO', 'BTN', 'SB', 'BB'],
+  '9': ['UTG', 'UTG1', 'MP', 'MP1', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
 };
 
+// Map numPlayers to position sets (used by getPositions).
+// Covers every count 2-9; falls back to POSITIONS_6 for unexpected values.
+const POSITIONS_MAP = {};
+for (let n = 2; n <= 9; n++) {
+  POSITIONS_MAP[n] = POSITIONS_BY_COUNT[String(n)] || POSITIONS_6;
+}
+
 export class GameState {
-  /**
-   * @param {{ numPlayers: number, position: string, isShortDeck?: boolean }} config
-   */
-  constructor({ numPlayers, position, isShortDeck = false }) {
+  constructor({ numPlayers, position, isShortDeck = false, bigBlind = 10 }) {
     this.numPlayers = numPlayers;
+    this.heroPosition = position;
     this.position = position;
     this.isShortDeck = isShortDeck;
-
+    this.bigBlind = bigBlind;
     this.stage = 'setup';
     this.holeCards = [];
     this.boardCards = [];
@@ -33,9 +44,21 @@ export class GameState {
     this.callAmount = 0;
     this.actions = [];
     this.hasAllIn = false;
+
+    this.seats = this._initSeats();
   }
 
-  /** Reset to setup stage, clear all state. Config is preserved. */
+  _initSeats() {
+    const positions = POSITIONS_BY_COUNT[String(this.numPlayers)] || POSITIONS_6;
+    return positions.map(pos => ({
+      position: pos,
+      isHero: pos === this.heroPosition,
+      status: 'active',
+      roundActions: [],
+      roundInvestment: 0,
+    }));
+  }
+
   reset() {
     this.stage = 'setup';
     this.holeCards = [];
@@ -44,97 +67,170 @@ export class GameState {
     this.callAmount = 0;
     this.actions = [];
     this.hasAllIn = false;
+    this.seats = this._initSeats();
   }
 
-  /**
-   * Update configuration.
-   * @param {{ numPlayers?: number, position?: string, isShortDeck?: boolean }} config
-   */
   setConfig({ numPlayers, position, isShortDeck }) {
     if (numPlayers !== undefined) this.numPlayers = numPlayers;
-    if (position !== undefined) this.position = position;
+    if (position !== undefined) {
+      this.position = position;
+      this.heroPosition = position;
+    }
     if (isShortDeck !== undefined) this.isShortDeck = isShortDeck;
+    this.seats = this._initSeats();
   }
 
-  /**
-   * Set hole cards and advance to preflop.
-   * @param {Array<{rank: string, suit: string, value: number}>} cards
-   */
   setHoleCards(cards) {
     this.holeCards = cards;
     this.stage = 'preflop';
+    this.postBlinds();
   }
 
-  /**
-   * Advance to next stage and add board cards.
-   * @param {Array<{rank: string, suit: string, value: number}>} newBoardCards
-   */
+  postBlinds() {
+    const bb = this.bigBlind;
+    const sbAmount = bb;
+    const sbSeat = this.seats.find(s => s.position === 'SB');
+    const bbSeat = this.seats.find(s => s.position === 'BB');
+
+    if (sbSeat) {
+      this.pot += sbAmount;
+      sbSeat.roundInvestment = sbAmount;
+      sbSeat.roundActions.push({ type: 'blind', amount: sbAmount, position: 'SB' });
+    }
+    if (bbSeat) {
+      this.pot += bb;
+      bbSeat.roundInvestment = bb;
+      bbSeat.roundActions.push({ type: 'blind', amount: bb, position: 'BB' });
+    }
+    this.callAmount = bb;
+  }
+
   advanceStage(newBoardCards) {
     const currentIndex = STAGES.indexOf(this.stage);
     if (currentIndex < STAGES.length - 1) {
       this.stage = STAGES[currentIndex + 1];
     }
     this.boardCards = [...this.boardCards, ...newBoardCards];
+    this.callAmount = 0;
+    for (const seat of this.seats) {
+      seat.roundActions = [];
+      seat.roundInvestment = 0;
+    }
   }
 
-  /**
-   * Track an action and update pot / callAmount.
-   * @param {{ type: string, amount?: number, player?: string }} action
-   */
-  addAction({ type, amount, player }) {
-    const action = { type, player };
+  addAction({ type, amount, player, position }) {
+    const pos = position || player;
+    const action = { type, position: pos };
+    const seat = this.seats.find(s => s.position === pos);
 
     switch (type) {
       case 'fold':
-        // No pot change
+        if (seat) seat.status = 'folded';
         break;
-
-      case 'call':
-        this.pot += this.callAmount;
-        action.amount = this.callAmount;
+      case 'check':
         break;
-
-      case 'raise':
-        // Player puts in (raiseAmount - their current obligation) extra
-        const raiseExtra = amount - this.callAmount;
-        this.pot += raiseExtra;
+      case 'call': {
+        const invested = seat ? seat.roundInvestment : 0;
+        const toAdd = Math.max(0, this.callAmount - invested);
+        this.pot += toAdd;
+        if (seat) seat.roundInvestment += toAdd;
+        action.amount = toAdd;
+        break;
+      }
+      case 'raise': {
+        const invested = seat ? seat.roundInvestment : 0;
+        const toAdd = Math.max(0, amount - invested);
+        this.pot += toAdd;
         this.callAmount = amount;
+        if (seat) seat.roundInvestment = amount;
         action.amount = amount;
         break;
-
+      }
       case 'bet':
         this.pot += amount;
         this.callAmount = amount;
+        if (seat) seat.roundInvestment = amount;
         action.amount = amount;
         break;
-
-      case 'allin':
-        this.pot += amount;
-        this.callAmount = amount;
+      case 'allin': {
+        const invested = seat ? seat.roundInvestment : 0;
+        const toAdd = Math.max(0, amount - invested);
+        this.pot += toAdd;
+        this.callAmount = Math.max(this.callAmount, amount);
         this.hasAllIn = true;
         action.amount = amount;
+        if (seat) {
+          seat.roundInvestment = amount;
+          seat.status = 'allin';
+        }
         break;
+      }
     }
 
     this.actions.push(action);
+    if (seat) {
+      seat.roundActions.push(action);
+    }
   }
 
-  /** @returns {number} Current call amount */
+  getActionOrder() {
+    const positions = POSITIONS_BY_COUNT[String(this.numPlayers)] || POSITIONS_6;
+    let startIndex;
+
+    if (this.stage === 'preflop') {
+      const bbIdx = positions.indexOf('BB');
+      startIndex = (bbIdx + 1) % positions.length;
+    } else {
+      const btnIdx = positions.indexOf('BTN');
+      startIndex = (btnIdx + 1) % positions.length;
+    }
+
+    const order = [];
+    for (let i = 0; i < positions.length; i++) {
+      order.push(positions[(startIndex + i) % positions.length]);
+    }
+    return order;
+  }
+
+  getActiveOpponents() {
+    return this.seats.filter(s => !s.isHero && s.status !== 'folded');
+  }
+
+  getOpponentRanges() {
+    const opponents = this.getActiveOpponents();
+    return opponents.map(seat => {
+      const lastAction = seat.roundActions.length > 0
+        ? seat.roundActions[seat.roundActions.length - 1]
+        : null;
+      const actionType = lastAction ? lastAction.type : 'call';
+      const rangePercent = inferOpponentRange(seat.position, actionType);
+      return { position: seat.position, rangePercent };
+    });
+  }
+
   getCallAmount() {
     return this.callAmount;
   }
 
-  /** @returns {string[]} Position array based on numPlayers */
+  /**
+   * Get the amount hero still needs to put in to call.
+   * Accounts for what hero has already invested this round.
+   */
+  getHeroCallAmount() {
+    const heroSeat = this.seats.find(s => s.isHero);
+    if (!heroSeat) return this.callAmount;
+    return Math.max(0, this.callAmount - heroSeat.roundInvestment);
+  }
+
   getPositions() {
     return POSITIONS_MAP[this.numPlayers] || POSITIONS_6;
   }
 
-  /** @returns {Object} Serialized state */
   toJSON() {
     return {
       stage: this.stage,
       numPlayers: this.numPlayers,
-      position: this.position,
+      position: this.heroPosition,
       isShortDeck: this.isShortDeck,
       holeCards: this.holeCards,
       boardCards: this.boardCards,
@@ -142,6 +238,7 @@ export class GameState {
       callAmount: this.callAmount,
       actions: this.actions,
       hasAllIn: this.hasAllIn,
+      seats: this.seats,
     };
   }
 }

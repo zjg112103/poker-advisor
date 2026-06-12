@@ -1,9 +1,9 @@
 /**
  * History Screen - shows past hand results stored in localStorage.
- * Will be enhanced when the HandHistory storage module is implemented.
+ * Reuses the HandHistory class for consistent data access.
  */
 
-const STORAGE_KEY = 'poker_advisor_history';
+import { HandHistory } from '../../storage/history.js';
 
 const ACTION_COLORS = {
   FOLD: '#ef4444',
@@ -36,10 +36,11 @@ export function createHistoryScreen(onBack) {
   header.textContent = '历史记录';
   screen.appendChild(header);
 
-  // -- load history from localStorage ---------------------------------------
-  const history = loadHistory();
+  // -- load history via HandHistory ----------------------------------------
+  const history = new HandHistory();
+  const hands = history.getAll();
 
-  if (history.length === 0) {
+  if (hands.length === 0) {
     // Empty state
     const emptyEl = document.createElement('div');
     emptyEl.className = 'history-empty';
@@ -53,7 +54,7 @@ export function createHistoryScreen(onBack) {
     const list = document.createElement('div');
     list.className = 'history-list';
 
-    history.forEach((entry) => {
+    hands.forEach((entry) => {
       const item = createHistoryItem(entry);
       list.appendChild(item);
     });
@@ -125,21 +126,6 @@ function createHistoryItem(entry) {
   item.appendChild(right);
 
   return item;
-}
-
-/**
- * Load history entries from localStorage.
- * @returns {Array}
- */
-function loadHistory() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 }
 
 /**

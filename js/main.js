@@ -4,28 +4,28 @@
  */
 
 // CSS imports (side effects)
-import './css/styles.css';
-import './js/ui/card-selector.css';
-import './js/ui/screens/setup-screen.css';
-import './js/ui/screens/betting-screen.css';
-import './js/ui/screens/result-screen.css';
+import '../css/styles.css';
+import './ui/card-selector.css';
+import './ui/screens/setup-screen.css';
+import './ui/screens/betting-screen.css';
+import './ui/screens/result-screen.css';
 
 // Engine modules
-import { GameState } from './js/ui/game-tracker.js';
-import { calculateEquity, calculatePotOdds } from './js/engine/monte-carlo.js';
-import { getRecommendation, getPreflopRecommendation } from './js/engine/strategy.js';
-import { evaluateHand, getHandName } from './js/engine/hand-evaluator.js';
+import { GameState } from './ui/game-tracker.js';
+import { calculateEquity, calculatePotOdds } from './engine/monte-carlo.js';
+import { getRecommendation, getPreflopRecommendation } from './engine/strategy.js';
+import { evaluateHand, getHandName } from './engine/hand-evaluator.js';
 
 // Screen factories
-import { createSetupScreen } from './js/ui/screens/setup-screen.js';
-import { createHoleCardsScreen } from './js/ui/screens/hole-cards-screen.js';
-import { createBettingScreen } from './js/ui/screens/betting-screen.js';
-import { createResultScreen } from './js/ui/screens/result-screen.js';
-import { createCommunityCardsScreen } from './js/ui/screens/community-cards-screen.js';
-import { createHistoryScreen } from './js/ui/screens/history-screen.js';
+import { createSetupScreen } from './ui/screens/setup-screen.js';
+import { createHoleCardsScreen } from './ui/screens/hole-cards-screen.js';
+import { createBettingScreen } from './ui/screens/betting-screen.js';
+import { createResultScreen } from './ui/screens/result-screen.js';
+import { createCommunityCardsScreen } from './ui/screens/community-cards-screen.js';
+import { createHistoryScreen } from './ui/screens/history-screen.js';
 
 // Storage
-import { HandHistory } from './js/storage/history.js';
+import { HandHistory } from './storage/history.js';
 
 const app = document.getElementById('app');
 const handHistory = new HandHistory();
@@ -45,8 +45,8 @@ function showScreen(element) {
 // ---------------------------------------------------------------------------
 
 function startSetup() {
-  const screen = createSetupScreen(({ isShortDeck, numPlayers, position }) => {
-    gameState = new GameState({ numPlayers, position, isShortDeck });
+  const screen = createSetupScreen(({ isShortDeck, numPlayers, position, bigBlind }) => {
+    gameState = new GameState({ numPlayers, position, isShortDeck, bigBlind });
     showHoleCardSelection();
   });
 
@@ -70,20 +70,21 @@ function showHoleCardSelection() {
 }
 
 function showBettingInput() {
-  const screen = createBettingScreen(gameState, () => {
-    calculateAndShowResult();
+  const screen = createBettingScreen(gameState, async () => {
+    await calculateAndShowResult();
   });
   showScreen(screen);
 }
 
 async function calculateAndShowResult() {
-  const equity = 0;
-  const potOdds = 0;
   let recommendation;
   let equityData;
   let handType = '';
 
-  const numRandomOpponents = gameState.numPlayers - 1;
+  // Get opponent range info for range-weighted simulation
+  const opponentRanges = gameState.getOpponentRanges();
+  const numActiveOpponents = opponentRanges.length;
+  const rangePercentages = opponentRanges.map(o => o.rangePercent);
 
   if (gameState.stage === 'preflop' && gameState.boardCards.length === 0) {
     // Preflop with no board: use preflop recommendation for quick advice
@@ -95,18 +96,17 @@ async function calculateAndShowResult() {
       actions: gameState.actions,
     });
 
-    // Also run Monte Carlo simulation
+    // Run Monte Carlo with opponent ranges
     const simResult = await calculateEquity(
       [gameState.holeCards],
       [],
       [],
-      { iterations: 3000, shortDeck: gameState.isShortDeck, numRandomOpponents },
+      { iterations: 3000, shortDeck: gameState.isShortDeck, numRandomOpponents: numActiveOpponents, opponentRanges: rangePercentages },
     );
 
     const equityPct = simResult.equities[0] * 100;
 
     if (gameState.callAmount > 0) {
-      // Recalculate with getRecommendation using equity
       const requiredEquity = calculatePotOdds(gameState.pot, gameState.callAmount);
       recommendation = getRecommendation({
         equity: equityPct,
@@ -128,16 +128,16 @@ async function calculateAndShowResult() {
       equityData = {
         equity: simResult.equities[0],
         handType: null,
-        potOdds: 0,
+        potOdds: null, // no bet to call → don't show pot odds
       };
     }
   } else {
-    // Post-flop (or preflop with board cards somehow)
+    // Post-flop
     const simResult = await calculateEquity(
       [gameState.holeCards],
       [],
       gameState.boardCards,
-      { iterations: 5000, shortDeck: gameState.isShortDeck, numRandomOpponents },
+      { iterations: 5000, shortDeck: gameState.isShortDeck, numRandomOpponents: numActiveOpponents, opponentRanges: rangePercentages },
     );
 
     const equityPct = simResult.equities[0] * 100;
@@ -165,7 +165,7 @@ async function calculateAndShowResult() {
     equityData = {
       equity: simResult.equities[0],
       handType: handType || null,
-      potOdds: gameState.callAmount > 0 ? requiredEquity / 100 : 0,
+      potOdds: gameState.callAmount > 0 ? requiredEquity / 100 : null,
     };
   }
 
