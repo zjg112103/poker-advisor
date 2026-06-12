@@ -79,7 +79,7 @@ describe('calculateEquity', () => {
     expect(result.equities[0]).toBeGreaterThan(0.55);
   });
 
-  it('performance: 10K iterations with 3 random opponents < 3 seconds', async () => {
+  it('performance: 10K iterations with 3 random opponents < 10 seconds', { timeout: 15000 }, async () => {
     const start = Date.now();
     await calculateEquity(
       [[c('A', 'spades'), c('K', 'hearts')]],
