@@ -2,7 +2,7 @@
  * Game State Tracker for poker game flow management.
  * Tracks stages, positions, pot, per-seat actions, and action order.
  */
-import { inferOpponentRange } from '../engine/ranges.js';
+import { inferOpponentRange, blockerAdjustedRange } from '../engine/ranges.js';
 
 export const STAGES = ['setup', 'preflop', 'flop', 'turn', 'river', 'showdown'];
 
@@ -199,12 +199,19 @@ export class GameState {
 
   getOpponentRanges() {
     const opponents = this.getActiveOpponents();
+    const hasHoleCards = this.holeCards && this.holeCards.length === 2;
+
     return opponents.map(seat => {
       const lastAction = seat.roundActions.length > 0
         ? seat.roundActions[seat.roundActions.length - 1]
         : null;
       const actionType = lastAction ? lastAction.type : 'call';
-      const rangePercent = inferOpponentRange(seat.position, actionType);
+
+      // Apply blocker adjustment when hero has hole cards
+      const rangePercent = hasHoleCards
+        ? blockerAdjustedRange(this.holeCards, seat.position, actionType)
+        : inferOpponentRange(seat.position, actionType);
+
       return { position: seat.position, rangePercent };
     });
   }

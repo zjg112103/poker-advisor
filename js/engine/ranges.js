@@ -95,6 +95,58 @@ export function inferOpponentRange(position, actionType) {
 }
 
 // ---------------------------------------------------------------------------
+// Blocker-adjusted range estimation
+// ---------------------------------------------------------------------------
+
+/**
+ * Adjust opponent range based on hero's hole cards (blocker effects).
+ *
+ * When hero holds cards that block premium hands from opponent's range,
+ * opponent's effective range widens (more medium hands fill in).
+ *
+ * @param {Array} holeCards - hero's 2 hole cards
+ * @param {string} position - opponent's position
+ * @param {string} actionType - opponent's action type
+ * @returns {number} adjusted range percentage (0-100)
+ */
+export function blockerAdjustedRange(holeCards, position, actionType) {
+  // Use inferOpponentRange for proper fold→0 / check→100 handling
+  const base = inferOpponentRange(position, actionType);
+  if (base === 0 || base >= 100) return base;
+
+  const [c1, c2] = holeCards;
+  const high = Math.max(c1.value, c2.value);
+  const low  = Math.min(c1.value, c2.value);
+  const isPair   = c1.value === c2.value;
+  const isSuited = c1.suit === c2.suit;
+
+  let bonus = 0;
+
+  // --- Pair blocker: removes combos of that pair rank ---
+  if (isPair) {
+    if (high >= 12) bonus += 3;   // QQ+: blocks many premium hands
+    else if (high >= 9) bonus += 2; // 99-JJ: moderate blocking
+    else bonus += 1;               // 66-88: small impact
+  }
+
+  // --- Ace blocker: blocks all Ax premium combos ---
+  if (high === 14) bonus += 3;
+  else if (low === 14) bonus += 3;
+
+  // --- King blocker: blocks Kx strong combos ---
+  if (high === 13) bonus += 1;
+  if (low === 13 && high !== 14) bonus += 1;
+
+  // --- Suit blocker: hero's suited cards reduce opponent flush draws ---
+  if (isSuited) bonus += 1;
+
+  // --- Connected blocker: reduces opponent straight possibilities ---
+  if (!isPair && high - low <= 2) bonus += 1;
+
+  return Math.min(100, base + bonus);
+}
+
+// ---------------------------------------------------------------------------
 // Range ↔ percentile conversion (used by monte-carlo range filtering)
 // ---------------------------------------------------------------------------
 
