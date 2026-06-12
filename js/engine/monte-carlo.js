@@ -9,6 +9,7 @@ import {
   removeCards,
 } from './card.js';
 import { evaluateHand, compareHands, getHandName } from './hand-evaluator.js';
+import { isHandInRange } from './ranges.js';
 
 /**
  * Calculate hand equity using Monte Carlo simulation.
@@ -20,6 +21,7 @@ import { evaluateHand, compareHands, getHandName } from './hand-evaluator.js';
  * @param {number} options.iterations - Number of simulation iterations
  * @param {boolean} [options.shortDeck=false] - Use short deck (36 cards)
  * @param {number} [options.numRandomOpponents=0] - Number of unknown opponents to simulate
+ * @param {Array<number>} [options.opponentRanges=[]] - Range % for each random opponent (0-100). 100 = any hand.
  * @returns {Promise<{ equities: number[], handTypeCounts: object[], iterations: number }>}
  */
 export function calculateEquity(holeCards, knownOpponents, board, options = {}) {
@@ -27,6 +29,7 @@ export function calculateEquity(holeCards, knownOpponents, board, options = {}) 
     iterations = 1000,
     shortDeck = false,
     numRandomOpponents = 0,
+    opponentRanges = [],
   } = options;
 
   const numHole = holeCards.length;
@@ -46,7 +49,7 @@ export function calculateEquity(holeCards, knownOpponents, board, options = {}) 
 
   // Counters
   const wins = new Array(numPlayers).fill(0);
-  const ties = new Array(numPlayers).fill(0);
+  const tieShares = new Array(numPlayers).fill(0);
   const handTypeCounts = new Array(numPlayers).fill(null).map(() => ({}));
 
   // Pre-allocate reusable structures
@@ -62,9 +65,41 @@ export function calculateEquity(holeCards, knownOpponents, board, options = {}) 
     const deck = shuffleDeck([...remainingDeck], iter * 31337 + 7919);
     let di = 0;
 
-    // Deal random opponent hands
+    // Deal random opponent hands (with optional range filtering).
+    // Each opponent always consumes exactly 2 cards from the deck.
+    // For range-constrained opponents, we try to swap with a later pair
+    // that matches the range — no extra card consumption.
     for (let i = 0; i < numRandomOpponents; i++) {
-      allHands[numHole + numKnown + i] = [deck[di++], deck[di++]];
+      const rangePercent = opponentRanges[i] || 100;
+      // Take the next 2 cards as the base hand
+      const c1 = deck[di];
+      const c2 = deck[di + 1];
+      di += 2;
+
+      if (rangePercent < 100 && !isHandInRange(c1, c2, rangePercent)) {
+        // Try to find a swap partner in the remaining undealt cards
+        let swapped = false;
+        for (let scan = di; scan + 1 < deck.length && !swapped; scan += 2) {
+          if (isHandInRange(deck[scan], deck[scan + 1], rangePercent)) {
+            // Swap: put dealt cards at scan position, use scan cards as hand
+            deck[scan] = c1;
+            deck[scan + 1] = c2;
+            allHands[numHole + numKnown + i] = [deck[scan], deck[scan + 1]];
+            // Actually we want the scan cards, so swap properly:
+            const s1 = deck[scan], s2 = deck[scan + 1];
+            deck[scan] = c1;
+            deck[scan + 1] = c2;
+            allHands[numHole + numKnown + i] = [s1, s2];
+            swapped = true;
+          }
+        }
+        if (!swapped) {
+          // No matching pair found — use the dealt cards as-is (soft constraint)
+          allHands[numHole + numKnown + i] = [c1, c2];
+        }
+      } else {
+        allHands[numHole + numKnown + i] = [c1, c2];
+      }
     }
 
     // Deal remaining board cards
@@ -110,16 +145,16 @@ export function calculateEquity(holeCards, knownOpponents, board, options = {}) 
     } else {
       for (let i = 0; i < numPlayers; i++) {
         if (compareHands(evaluations[i], evaluations[bestIdx]) === 0) {
-          ties[i]++;
+          tieShares[i] += 1 / winnerCount;
         }
       }
     }
   }
 
-  // Calculate equities: (wins + ties/numPlayers) / iterations
+  // Calculate equities: (wins + tieShares) / iterations
   const equities = new Array(numPlayers);
   for (let i = 0; i < numPlayers; i++) {
-    equities[i] = (wins[i] + ties[i] / numPlayers) / iterations;
+    equities[i] = (wins[i] + tieShares[i]) / iterations;
   }
 
   return Promise.resolve({ equities, handTypeCounts, iterations });
