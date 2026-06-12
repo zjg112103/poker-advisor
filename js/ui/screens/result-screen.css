@@ -81,3 +81,49 @@
 .secondary-btn:hover {
   border-color: #64748b;
 }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 480px) {
+  .result-screen {
+    padding-top: 12px;
+  }
+
+  .result-card {
+    padding: 16px;
+  }
+
+  .result-action {
+    font-size: 2rem;
+  }
+
+  .result-equity {
+    font-size: 1.2rem;
+  }
+
+  .result-hand-type {
+    font-size: 0.9rem;
+  }
+
+  .result-reason {
+    font-size: 0.82rem;
+    padding: 8px;
+  }
+
+  .result-pot-odds {
+    font-size: 0.78rem;
+  }
+
+  .result-confidence {
+    font-size: 0.78rem;
+  }
+
+  .result-buttons {
+    gap: 8px;
+  }
+
+  .result-buttons .primary-btn,
+  .result-buttons .secondary-btn {
+    min-height: 44px;
+    font-size: 0.92rem;
+  }
+}

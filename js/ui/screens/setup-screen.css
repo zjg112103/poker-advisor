@@ -165,3 +165,57 @@
 .primary-btn:active:not(:disabled) {
   background: #1d4ed8;
 }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 480px) {
+  .setup-screen {
+    gap: 10px;
+    padding-top: 12px;
+  }
+
+  .app-title {
+    font-size: 1.3rem;
+    padding: 8px 0;
+  }
+
+  .setup-label {
+    font-size: 0.82rem;
+  }
+
+  .toggle-btn,
+  .count-btn {
+    padding: 10px 10px;
+    font-size: 0.82rem;
+    min-height: 44px;
+  }
+
+  /* Table diagram: smaller on mobile */
+  .poker-table-container {
+    max-width: 320px;
+  }
+
+  .table-seat {
+    width: 44px;
+    height: 40px;
+  }
+
+  .seat-name {
+    font-size: 0.65rem;
+  }
+
+  .seat-desc {
+    font-size: 0.52rem;
+  }
+
+  .pos-desc {
+    padding: 6px 10px;
+  }
+
+  .pos-desc-name {
+    font-size: 0.88rem;
+  }
+
+  .pos-desc-tip {
+    font-size: 0.75rem;
+  }
+}

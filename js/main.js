@@ -20,7 +20,6 @@ import { evaluateHand, getHandName } from './engine/hand-evaluator.js';
 import { createSetupScreen } from './ui/screens/setup-screen.js';
 import { createHoleCardsScreen } from './ui/screens/hole-cards-screen.js';
 import { createBettingScreen } from './ui/screens/betting-screen.js';
-import { createResultScreen } from './ui/screens/result-screen.js';
 import { createCommunityCardsScreen } from './ui/screens/community-cards-screen.js';
 import { createHistoryScreen } from './ui/screens/history-screen.js';
 
@@ -70,24 +69,38 @@ function showHoleCardSelection() {
 }
 
 function showBettingInput() {
-  const screen = createBettingScreen(gameState, async () => {
-    await calculateAndShowResult();
+  const screen = createBettingScreen(gameState, {
+    // Called when hero clicks "获取建议" — returns { recommendation, equityData }
+    onGetAdvice: async () => {
+      return calculateAdvice();
+    },
+    // Called when the betting round is complete and user clicks "下一轮"
+    onNextRound: () => {
+      showCommunityCardSelection();
+    },
+    // Called when user clicks "新一手牌"
+    onNewHand: () => {
+      startNewHand();
+    },
   });
   showScreen(screen);
 }
 
-async function calculateAndShowResult() {
+/**
+ * Calculate recommendation based on current game state.
+ * Returns { recommendation, equityData } without navigating away.
+ */
+async function calculateAdvice() {
   let recommendation;
   let equityData;
   let handType = '';
 
-  // Get opponent range info for range-weighted simulation
   const opponentRanges = gameState.getOpponentRanges();
   const numActiveOpponents = opponentRanges.length;
   const rangePercentages = opponentRanges.map(o => o.rangePercent);
 
   if (gameState.stage === 'preflop' && gameState.boardCards.length === 0) {
-    // Preflop with no board: use preflop recommendation for quick advice
+    // Preflop with no board
     const preflopRec = getPreflopRecommendation({
       holeCards: gameState.holeCards,
       position: gameState.position,
@@ -96,7 +109,6 @@ async function calculateAndShowResult() {
       actions: gameState.actions,
     });
 
-    // Run Monte Carlo with opponent ranges
     const simResult = await calculateEquity(
       [gameState.holeCards],
       [],
@@ -129,7 +141,7 @@ async function calculateAndShowResult() {
       equityData = {
         equity: simResult.equities[0],
         handType: null,
-        potOdds: null, // no bet to call → don't show pot odds
+        potOdds: null,
       };
     }
   } else {
@@ -143,7 +155,6 @@ async function calculateAndShowResult() {
 
     const equityPct = simResult.equities[0] * 100;
 
-    // Evaluate hand type
     if (gameState.boardCards.length >= 3) {
       const allCards = [...gameState.holeCards, ...gameState.boardCards];
       const evalResult = evaluateHand(allCards, { shortDeck: gameState.isShortDeck });
@@ -184,31 +195,18 @@ async function calculateAndShowResult() {
     timestamp: Date.now(),
   });
 
-  showResultScreen(recommendation, equityData);
-}
-
-function showResultScreen(recommendation, equityData) {
-  const screen = createResultScreen(
-    gameState,
-    recommendation,
-    equityData,
-    () => showCommunityCardSelection(),
-    () => startNewHand(),
-  );
-  showScreen(screen);
+  return { recommendation, equityData };
 }
 
 function showCommunityCardSelection() {
-  // Determine how many cards to select for next stage
   let numCards;
   if (gameState.stage === 'preflop') {
-    numCards = 3; // going to flop
+    numCards = 3;
   } else if (gameState.stage === 'flop') {
-    numCards = 1; // going to turn
+    numCards = 1;
   } else if (gameState.stage === 'turn') {
-    numCards = 1; // going to river
+    numCards = 1;
   } else {
-    // Should not happen, but fallback
     startNewHand();
     return;
   }

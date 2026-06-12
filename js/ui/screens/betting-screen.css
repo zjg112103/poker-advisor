@@ -197,3 +197,266 @@
 .hero-advice-btn {
   margin-top: 4px;
 }
+
+/* ---- Inline advice panel ---- */
+.advice-panel {
+  margin-top: 4px;
+  padding: 12px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+}
+
+.advice-rec-card {
+  border-left: 4px solid #64748b;
+  padding: 8px 12px;
+  background: #0f172a;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 10px;
+}
+
+.advice-rec-action {
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.advice-rec-equity {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.advice-rec-hand-type {
+  font-size: 0.85rem;
+  color: #a78bfa;
+  margin-top: 2px;
+}
+
+.advice-rec-pot-odds {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.advice-rec-reason {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.advice-rec-confidence {
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+.advice-rec-confidence.confidence-high { color: #22c55e; }
+.advice-rec-confidence.confidence-medium { color: #f59e0b; }
+.advice-rec-confidence.confidence-low { color: #ef4444; }
+
+.advice-divider {
+  text-align: center;
+  color: #f59e0b;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+/* Hero action buttons */
+.hero-action-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hero-action-btn {
+  flex: 1;
+  min-width: 60px;
+  padding: 10px 8px;
+  border: 2px solid #475569;
+  border-radius: 8px;
+  background: #334155;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.hero-action-btn:hover {
+  background: #475569;
+  border-color: #94a3b8;
+}
+
+.hero-action-recommended {
+  border-color: #22c55e;
+  background: #14532d;
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.hero-action-recommended:hover {
+  background: #166534;
+  border-color: #4ade80;
+}
+
+.hero-amount-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---- Round complete panel ---- */
+.round-complete-panel {
+  margin-top: 8px;
+  padding: 16px;
+  background: #1e293b;
+  border: 1px solid #22c55e;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.round-complete-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #22c55e;
+  margin-bottom: 6px;
+}
+
+.round-complete-pot {
+  font-size: 0.9rem;
+  color: #f59e0b;
+  margin-bottom: 12px;
+}
+
+.round-complete-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 480px) {
+  .betting-screen {
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  .stage-badge {
+    font-size: 0.8rem;
+    padding: 3px 10px;
+  }
+
+  .betting-info-bar {
+    font-size: 0.78rem;
+  }
+
+  .pot-info {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+
+  /* Table area: smaller on mobile */
+  .betting-table-area {
+    max-width: 320px;
+  }
+
+  .betting-poker-table {
+    border-width: 2px;
+  }
+
+  /* Smaller seats on mobile */
+  .betting-seat {
+    width: 42px;
+    height: 38px;
+    border-width: 1.5px;
+  }
+
+  .bseat-name {
+    font-size: 0.58rem;
+  }
+
+  .bseat-status {
+    font-size: 0.48rem;
+    max-width: 42px;
+  }
+
+  /* Action panel */
+  .action-panel {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .action-opt-btn {
+    padding: 10px 8px;
+    font-size: 0.82rem;
+    min-height: 44px;
+  }
+
+  .action-amount-input {
+    font-size: 16px;
+  }
+
+  /* Advice panel */
+  .advice-panel {
+    padding: 10px;
+  }
+
+  .advice-rec-card {
+    padding: 6px 10px;
+  }
+
+  .advice-rec-action {
+    font-size: 1.1rem;
+  }
+
+  .advice-rec-equity {
+    font-size: 0.82rem;
+  }
+
+  .advice-rec-hand-type {
+    font-size: 0.78rem;
+  }
+
+  .advice-rec-pot-odds {
+    font-size: 0.78rem;
+  }
+
+  .advice-rec-reason {
+    font-size: 0.75rem;
+  }
+
+  .advice-rec-confidence {
+    font-size: 0.75rem;
+  }
+
+  .advice-divider {
+    font-size: 0.78rem;
+    margin: 6px 0;
+  }
+
+  /* Hero action buttons: larger touch targets */
+  .hero-action-btn {
+    min-height: 48px;
+    padding: 10px 6px;
+    font-size: 0.82rem;
+  }
+
+  /* Round complete */
+  .round-complete-panel {
+    padding: 12px;
+  }
+
+  .round-complete-title {
+    font-size: 1rem;
+  }
+
+  .round-complete-pot {
+    font-size: 0.82rem;
+  }
+
+  .round-complete-buttons .primary-btn,
+  .round-complete-buttons .secondary-btn {
+    min-height: 44px;
+  }
+}

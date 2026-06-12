@@ -26,3 +26,30 @@
 .card-btn:hover:not(:disabled) { border-color: #2563eb; }
 .card-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .card-btn.card-selected { background: #2563eb; color: white; border-color: #2563eb; }
+
+/* ---- Mobile: one suit per row ---- */
+@media (max-width: 480px) {
+  .card-grid {
+    /* Full deck: 13 ranks per suit → 1 suit per row */
+    grid-template-columns: repeat(13, 1fr);
+    gap: 2px;
+    padding: 4px;
+  }
+  .card-grid.short-deck {
+    /* Short deck: 9 ranks per suit → 1 suit per row */
+    grid-template-columns: repeat(9, 1fr);
+  }
+  .card-btn {
+    min-height: 32px;
+    font-size: 0.6rem;
+    padding: 1px;
+    aspect-ratio: unset;
+  }
+  /* Visual gap between suit rows */
+  .card-grid .card-btn:nth-child(13n) {
+    margin-bottom: 4px;
+  }
+  .card-grid.short-deck .card-btn:nth-child(9n) {
+    margin-bottom: 4px;
+  }
+}

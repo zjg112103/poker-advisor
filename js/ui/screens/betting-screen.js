@@ -3,7 +3,9 @@
  *
  * Shows an oval table with all seats. The user inputs each opponent's
  * action in order. When it reaches the hero's seat, a "获取建议" button
- * appears.
+ * appears. After getting advice, hero chooses their action inline,
+ * and the flow continues for remaining players.
+ * When the round is truly over (all acted), shows "下一轮" button.
  */
 import './betting-screen.css';
 import { cardToString } from '../../engine/card.js';
@@ -24,7 +26,29 @@ const ACTION_OPTIONS = [
   { value: 'allin', label: 'All-In' },
 ];
 
-export function createBettingScreen(gameState, onGetAdvice) {
+const ACTION_COLORS = {
+  FOLD: '#ef4444',
+  CALL: '#22c55e',
+  CHECK: '#3b82f6',
+  RAISE: '#f59e0b',
+  BET: '#f59e0b',
+};
+
+const ACTION_LABELS = {
+  FOLD: '弃牌',
+  CALL: '跟注',
+  CHECK: '过牌',
+  RAISE: '加注',
+  BET: '下注',
+};
+
+const CONFIDENCE_LABELS = {
+  high: '高',
+  medium: '中',
+  low: '低',
+};
+
+export function createBettingScreen(gameState, { onGetAdvice, onNextRound, onNewHand }) {
   const screen = document.createElement('div');
   screen.className = 'screen betting-screen';
 
@@ -74,25 +98,25 @@ export function createBettingScreen(gameState, onGetAdvice) {
   adviceBtn.className = 'primary-btn hero-advice-btn';
   adviceBtn.textContent = '轮到你了 — 获取建议';
   adviceBtn.style.display = 'none';
-  adviceBtn.addEventListener('click', async () => {
-    adviceBtn.textContent = '计算中...';
-    adviceBtn.disabled = true;
-    try {
-      await onGetAdvice(gameState);
-    } catch (err) {
-      console.error('计算建议出错:', err);
-      adviceBtn.textContent = '计算出错，点击重试';
-      adviceBtn.disabled = false;
-    }
-  });
   screen.appendChild(adviceBtn);
+
+  // -- advice result panel (inline, shown after clicking advice btn)
+  const advicePanel = document.createElement('div');
+  advicePanel.className = 'advice-panel';
+  advicePanel.style.display = 'none';
+  screen.appendChild(advicePanel);
+
+  // -- round complete panel (shown when all players have acted)
+  const roundCompletePanel = document.createElement('div');
+  roundCompletePanel.className = 'round-complete-panel';
+  roundCompletePanel.style.display = 'none';
+  screen.appendChild(roundCompletePanel);
 
   // -- state
   const actionOrder = gameState.getActionOrder();
   const seatElements = {};
 
   // Track which seats still need to act in this betting round.
-  // When someone raises/bets, reset all OTHER active seats to need action again.
   const needsToAct = new Set();
   for (const pos of actionOrder) {
     const seat = gameState.seats.find(s => s.position === pos);
@@ -105,14 +129,12 @@ export function createBettingScreen(gameState, onGetAdvice) {
     tableArea.innerHTML = '';
     const positions = gameState.getPositions();
 
-    // Calculate seat positions around ellipse
     positions.forEach((pos, i) => {
       const seat = gameState.seats.find(s => s.position === pos);
       const el = document.createElement('div');
       el.className = 'betting-seat';
       if (seat.isHero) el.classList.add('seat-hero');
 
-      // Position around ellipse
       const angle = (Math.PI / 2) - (2 * Math.PI * i / positions.length);
       const cx = 50, cy = 50, rx = 42, ry = 36;
       const x = cx + rx * Math.cos(angle);
@@ -133,7 +155,6 @@ export function createBettingScreen(gameState, onGetAdvice) {
       seatElements[pos] = { el, statusEl };
     });
 
-    // Draw the oval
     const table = document.createElement('div');
     table.className = 'betting-poker-table';
     tableArea.appendChild(table);
@@ -154,14 +175,12 @@ export function createBettingScreen(gameState, onGetAdvice) {
         refs.el.classList.add('seat-allin');
         refs.statusEl.textContent = 'All-In';
       } else if (seat.roundActions.length > 0) {
-        // Show the last non-blind action
         const nonBlind = seat.roundActions.filter(a => a.type !== 'blind');
         if (nonBlind.length > 0) {
           const last = nonBlind[nonBlind.length - 1];
           refs.el.classList.add('seat-acted');
           refs.statusEl.textContent = formatAction(last);
         } else {
-          // Only blind action
           const blindAction = seat.roundActions[0];
           refs.el.classList.add('seat-acted');
           refs.statusEl.textContent = '盲' + blindAction.amount;
@@ -192,9 +211,7 @@ export function createBettingScreen(gameState, onGetAdvice) {
     btnGroup.className = 'action-btn-group';
 
     for (const opt of ACTION_OPTIONS) {
-      // Skip "check" if there's a bet to call
       if (opt.value === 'check' && gameState.callAmount > 0) continue;
-      // Skip "call" if nothing to call
       if (opt.value === 'call' && gameState.callAmount === 0) continue;
 
       const btn = document.createElement('button');
@@ -265,7 +282,6 @@ export function createBettingScreen(gameState, onGetAdvice) {
     if (type === 'fold') {
       needsToAct.delete(pos);
     } else if (type === 'raise' || type === 'bet') {
-      // This seat acted; reset all OTHER active seats to need action again
       needsToAct.delete(pos);
       for (const otherPos of actionOrder) {
         if (otherPos === pos) continue;
@@ -275,7 +291,6 @@ export function createBettingScreen(gameState, onGetAdvice) {
         }
       }
     } else {
-      // call, check — this seat is done for now
       needsToAct.delete(pos);
     }
 
@@ -284,7 +299,6 @@ export function createBettingScreen(gameState, onGetAdvice) {
   }
 
   function advanceToNext(fromPos) {
-    // Find next seat that still needs to act, using actionOrder for direction
     const orderIdx = actionOrder.indexOf(fromPos);
     const startIdx = orderIdx >= 0 ? orderIdx : 0;
 
@@ -311,28 +325,307 @@ export function createBettingScreen(gameState, onGetAdvice) {
       return;
     }
 
-    // Nobody needs to act — shouldn't happen in normal flow, fallback to hero
-    showHeroTurn();
+    // Nobody needs to act — round is complete
+    showRoundComplete();
   }
 
   function highlightSeat(pos) {
-    // Remove highlight from all
     Object.values(seatElements).forEach(refs => refs.el.classList.remove('seat-active'));
     const refs = seatElements[pos];
     if (refs) refs.el.classList.add('seat-active');
   }
 
   function showHeroTurn() {
-    Object.values(seatElements).forEach(refs => refs.el.classList.remove('seat-active'));
+    // Hide other panels
+    advicePanel.style.display = 'none';
+    roundCompletePanel.style.display = 'none';
+    actionPanel.style.display = 'none';
+
+    Object.values(seatElements).forEach(refs => {
+      refs.el.classList.remove('seat-active');
+      refs.el.classList.remove('seat-hero-turn');
+    });
     const heroRefs = seatElements[gameState.heroPosition];
     if (heroRefs) heroRefs.el.classList.add('seat-hero-turn');
 
-    // Show hero's actual cost to call (may be 0 if already matched, e.g. BB preflop)
+    // Show hero's actual cost to call
     const heroCall = gameState.getHeroCallAmount();
     callLabel.innerHTML = '需跟注: <strong>' + heroCall + '</strong>';
 
     adviceBtn.style.display = 'block';
+    adviceBtn.textContent = '轮到你了 — 获取建议';
+    adviceBtn.disabled = false;
+  }
+
+  // -- Hero advice button click handler
+  adviceBtn.addEventListener('click', async () => {
+    adviceBtn.textContent = '计算中...';
+    adviceBtn.disabled = true;
+    try {
+      const result = await onGetAdvice(gameState);
+      showAdviceResult(result.recommendation, result.equityData);
+    } catch (err) {
+      console.error('计算建议出错:', err);
+      adviceBtn.textContent = '计算出错，点击重试';
+      adviceBtn.disabled = false;
+    }
+  });
+
+  /**
+   * Show the recommendation result inline, with hero action buttons.
+   */
+  function showAdviceResult(recommendation, equityData) {
+    adviceBtn.style.display = 'none';
+    advicePanel.style.display = 'block';
+    advicePanel.innerHTML = '';
+
+    const actionKey = (recommendation.action || '').toUpperCase();
+    const borderColor = ACTION_COLORS[actionKey] || '#64748b';
+    const actionLabel = ACTION_LABELS[actionKey] || recommendation.action;
+
+    // -- Recommendation card
+    const recCard = document.createElement('div');
+    recCard.className = 'advice-rec-card';
+    recCard.style.borderColor = borderColor;
+
+    // Recommended action
+    const recAction = document.createElement('div');
+    recAction.className = 'advice-rec-action';
+    recAction.style.color = borderColor;
+    const amount = recommendation.raiseAmount || recommendation.betAmount || recommendation.amount;
+    const hasAmount = (actionKey === 'RAISE' || actionKey === 'BET') && amount;
+    recAction.textContent = hasAmount ? '建议: ' + actionLabel + ' ' + amount : '建议: ' + actionLabel;
+    recCard.appendChild(recAction);
+
+    // Equity
+    const eqEl = document.createElement('div');
+    eqEl.className = 'advice-rec-equity';
+    eqEl.textContent = '胜率: ' + formatPercent(equityData.equity);
+    recCard.appendChild(eqEl);
+
+    // Hand type
+    if (equityData.handType) {
+      const htEl = document.createElement('div');
+      htEl.className = 'advice-rec-hand-type';
+      htEl.textContent = equityData.handType;
+      recCard.appendChild(htEl);
+    }
+
+    // Pot odds
+    if (equityData.potOdds !== undefined && equityData.potOdds !== null) {
+      const poEl = document.createElement('div');
+      poEl.className = 'advice-rec-pot-odds';
+      poEl.textContent = '底池赔率: ' + formatPercent(equityData.potOdds);
+      recCard.appendChild(poEl);
+    }
+
+    // Reason
+    if (recommendation.reason) {
+      const reasonEl = document.createElement('div');
+      reasonEl.className = 'advice-rec-reason';
+      reasonEl.textContent = recommendation.reason;
+      recCard.appendChild(reasonEl);
+    }
+
+    // Confidence
+    const confidence = recommendation.confidence || 'medium';
+    const confEl = document.createElement('div');
+    confEl.className = 'advice-rec-confidence confidence-' + confidence.toLowerCase();
+    confEl.textContent = '信心: ' + (CONFIDENCE_LABELS[confidence.toLowerCase()] || confidence);
+    recCard.appendChild(confEl);
+
+    advicePanel.appendChild(recCard);
+
+    // -- Divider
+    const divider = document.createElement('div');
+    divider.className = 'advice-divider';
+    divider.textContent = '你实际选择:';
+    advicePanel.appendChild(divider);
+
+    // -- Hero action buttons
+    const heroBtnGroup = document.createElement('div');
+    heroBtnGroup.className = 'hero-action-btn-group';
+
+    const heroCall = gameState.getHeroCallAmount();
+
+    for (const opt of ACTION_OPTIONS) {
+      if (opt.value === 'check' && heroCall > 0) continue;
+      if (opt.value === 'call' && heroCall === 0) continue;
+
+      const btn = document.createElement('button');
+      btn.className = 'hero-action-btn';
+
+      // Highlight the recommended action
+      const optKey = opt.value.toUpperCase();
+      if (optKey === actionKey) {
+        btn.classList.add('hero-action-recommended');
+      }
+
+      btn.textContent = opt.label;
+      if (opt.value === 'call') {
+        btn.textContent = '跟注 ' + heroCall;
+      }
+
+      btn.addEventListener('click', () => {
+        if (opt.value === 'bet' || opt.value === 'raise' || opt.value === 'allin') {
+          showHeroAmountInput(opt.value, actionKey);
+        } else {
+          submitHeroAction(opt.value);
+        }
+      });
+      heroBtnGroup.appendChild(btn);
+    }
+
+    advicePanel.appendChild(heroBtnGroup);
+  }
+
+  /**
+   * Show amount input for hero's bet/raise/allin.
+   */
+  function showHeroAmountInput(type, recommendedActionKey) {
+    // Find the action button group and replace it with amount input
+    const existingGroup = advicePanel.querySelector('.hero-action-btn-group');
+    if (existingGroup) existingGroup.remove();
+
+    const inputPanel = document.createElement('div');
+    inputPanel.className = 'hero-amount-panel';
+
+    const label = document.createElement('span');
+    label.className = 'action-label';
+    label.textContent = type === 'allin' ? 'All-In 金额:' : '金额:';
+    inputPanel.appendChild(label);
+
+    const inputRow = document.createElement('div');
+    inputRow.className = 'action-input-row';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'action-amount-input';
+    input.placeholder = type === 'allin' ? '全部筹码' : '金额';
+    input.min = '0';
+    inputRow.appendChild(input);
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'action-opt-btn confirm';
+    confirmBtn.textContent = '确认';
+    confirmBtn.addEventListener('click', () => {
+      const amount = parseInt(input.value, 10);
+      if (type === 'raise' && amount < gameState.callAmount * 2) {
+        input.style.borderColor = '#ef4444';
+        return;
+      }
+      if (type === 'bet' && amount < gameState.bigBlind) {
+        input.style.borderColor = '#ef4444';
+        return;
+      }
+      if (amount > 0) submitHeroAction(type, amount);
+    });
+    inputRow.appendChild(confirmBtn);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'action-opt-btn';
+    cancelBtn.textContent = '返回';
+    cancelBtn.addEventListener('click', () => {
+      // Remove amount panel, re-show action buttons — need to re-render advice
+      inputPanel.remove();
+      // Re-show hero turn to get advice panel back is complex,
+      // simpler: just go back to hero turn without recalculating
+      showHeroTurn();
+    });
+    inputRow.appendChild(cancelBtn);
+
+    inputPanel.appendChild(inputRow);
+    advicePanel.appendChild(inputPanel);
+  }
+
+  /**
+   * Submit hero's chosen action and continue the flow.
+   */
+  function submitHeroAction(type, amount) {
+    gameState.addAction({ type, amount, position: gameState.heroPosition });
+
+    // Hide advice panel
+    advicePanel.style.display = 'none';
+
+    // Hero folds → hand is over, start new hand directly
+    if (type === 'fold') {
+      updateSeats();
+      onNewHand();
+      return;
+    }
+
+    // Update needsToAct based on action type (same logic as opponent)
+    if (type === 'raise' || type === 'bet') {
+      needsToAct.delete(gameState.heroPosition);
+      for (const otherPos of actionOrder) {
+        if (otherPos === gameState.heroPosition) continue;
+        const seat = gameState.seats.find(s => s.position === otherPos);
+        if (seat && seat.status !== 'folded' && seat.status !== 'allin') {
+          needsToAct.add(otherPos);
+        }
+      }
+    } else {
+      needsToAct.delete(gameState.heroPosition);
+    }
+
+    // Remove hero turn highlight
+    const heroRefs = seatElements[gameState.heroPosition];
+    if (heroRefs) heroRefs.el.classList.remove('seat-hero-turn');
+
+    updateSeats();
+    advanceToNext(gameState.heroPosition);
+  }
+
+  /**
+   * Show round complete panel — all players have finished acting.
+   */
+  function showRoundComplete() {
+    adviceBtn.style.display = 'none';
+    advicePanel.style.display = 'none';
     actionPanel.style.display = 'none';
+
+    // Remove all highlights
+    Object.values(seatElements).forEach(refs => {
+      refs.el.classList.remove('seat-active');
+      refs.el.classList.remove('seat-hero-turn');
+    });
+
+    roundCompletePanel.style.display = 'block';
+    roundCompletePanel.innerHTML = '';
+
+    const title = document.createElement('div');
+    title.className = 'round-complete-title';
+    title.textContent = '本轮下注结束';
+    roundCompletePanel.appendChild(title);
+
+    // Show updated pot
+    const potInfo = document.createElement('div');
+    potInfo.className = 'round-complete-pot';
+    potInfo.textContent = '当前底池: ' + gameState.pot;
+    roundCompletePanel.appendChild(potInfo);
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'round-complete-buttons';
+
+    // "下一轮" button — only if not at river stage
+    const isRiver = gameState.stage === 'river';
+    if (!isRiver) {
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'primary-btn';
+      nextBtn.style.flex = '1';
+      nextBtn.textContent = '下一轮';
+      nextBtn.addEventListener('click', () => onNextRound());
+      btnRow.appendChild(nextBtn);
+    }
+
+    // "新一手牌" button
+    const newHandBtn = document.createElement('button');
+    newHandBtn.className = 'secondary-btn';
+    newHandBtn.textContent = '新一手牌';
+    newHandBtn.addEventListener('click', () => onNewHand());
+    btnRow.appendChild(newHandBtn);
+
+    roundCompletePanel.appendChild(btnRow);
   }
 
   function formatAction(action) {
@@ -345,6 +638,11 @@ export function createBettingScreen(gameState, onGetAdvice) {
       case 'allin': return 'All-In ' + action.amount;
       default: return action.type;
     }
+  }
+
+  function formatPercent(value) {
+    if (typeof value !== 'number' || isNaN(value)) return '-';
+    return (value * 100).toFixed(1) + '%';
   }
 
   // -- start the flow
@@ -370,9 +668,8 @@ export function createBettingScreen(gameState, onGetAdvice) {
     started = true;
     break;
   }
-  // If nobody needs to act, show hero turn
   if (!started) {
-    showHeroTurn();
+    showRoundComplete();
   }
 
   return screen;
