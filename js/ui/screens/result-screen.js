@@ -53,9 +53,10 @@ export function createResultScreen(gameState, recommendation, equityData, onCont
   actionText.className = 'result-action';
   actionText.style.color = borderColor;
 
-  const hasAmount = (actionKey === 'RAISE' || actionKey === 'BET') && recommendation.amount;
+  const amount = recommendation.raiseAmount || recommendation.betAmount || recommendation.amount;
+  const hasAmount = (actionKey === 'RAISE' || actionKey === 'BET') && amount;
   actionText.textContent = hasAmount
-    ? actionLabel + ' ' + recommendation.amount
+    ? actionLabel + ' ' + amount
     : actionLabel;
   card.appendChild(actionText);
 

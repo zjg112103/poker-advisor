@@ -24,16 +24,14 @@
 }
 
 .toggle-group,
-.player-count-group,
-.position-group {
+.player-count-group {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 
 .toggle-btn,
-.count-btn,
-.pos-btn {
+.count-btn {
   padding: 8px 12px;
   border: 1px solid #334155;
   border-radius: 6px;
@@ -44,11 +42,107 @@
 }
 
 .toggle-btn.active,
-.count-btn.active,
-.pos-btn.active {
+.count-btn.active {
   background: #2563eb;
   border-color: #2563eb;
   color: white;
+}
+
+/* Poker table diagram */
+.poker-table-container {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1.2 / 1;
+  margin: 0 auto;
+}
+
+.poker-table {
+  position: absolute;
+  top: 15%;
+  left: 10%;
+  width: 80%;
+  height: 70%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #166534, #15803d);
+  border: 3px solid #22c55e;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), inset 0 0 30px rgba(0, 0, 0, 0.3);
+}
+
+.table-seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 48px;
+  border: 2px solid #475569;
+  border-radius: 10px;
+  background: #1e293b;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  z-index: 1;
+  gap: 1px;
+}
+
+.table-seat:hover {
+  border-color: #3b82f6;
+  background: #334155;
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.table-seat.active {
+  border-color: #f59e0b;
+  background: #1e3a5f;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  transform: translate(-50%, -50%) scale(1.12);
+}
+
+.table-seat.active .seat-name {
+  color: #f59e0b;
+}
+
+.seat-name {
+  font-size: 0.75rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.seat-desc {
+  font-size: 0.6rem;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+.table-seat.active .seat-desc {
+  color: #cbd5e1;
+}
+
+/* Position description box */
+.pos-desc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.pos-desc-name {
+  font-weight: bold;
+  color: #f59e0b;
+  font-size: 0.95rem;
+}
+
+.pos-desc-tip {
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
 .primary-btn {

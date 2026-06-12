@@ -1,8 +1,8 @@
 .betting-screen {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding-top: 20px;
+  gap: 12px;
+  padding-top: 16px;
 }
 
 .stage-badge {
@@ -13,77 +13,187 @@
   border-radius: 4px;
   font-weight: bold;
   font-size: 0.9rem;
+  text-align: center;
 }
 
-.hole-cards-display,
-.board-display {
-  margin-top: 8px;
-  font-size: 1rem;
+.betting-info-bar {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #94a3b8;
 }
 
 .pot-info {
   display: flex;
   justify-content: space-between;
   background: #1e293b;
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 8px;
+  font-size: 0.9rem;
 }
 
 .pot-info strong {
   color: #f59e0b;
 }
 
-.actions-section {
+/* Poker table layout */
+.betting-table-area {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1.2 / 1;
+  margin: 4px auto;
+}
+
+.betting-poker-table {
+  position: absolute;
+  top: 15%;
+  left: 10%;
+  width: 80%;
+  height: 70%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #166534, #15803d);
+  border: 3px solid #22c55e;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), inset 0 0 30px rgba(0, 0, 0, 0.3);
+}
+
+.betting-seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 44px;
+  border: 2px solid #475569;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #e2e8f0;
+  z-index: 1;
+  gap: 1px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.bseat-name {
+  font-size: 0.65rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.bseat-status {
+  font-size: 0.55rem;
+  color: #94a3b8;
+  line-height: 1;
+  max-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Seat states */
+.seat-hero {
+  border-color: #3b82f6;
+  background: #1e3a5f;
+}
+.seat-hero .bseat-name { color: #3b82f6; }
+
+.seat-active {
+  border-color: #f59e0b;
+  background: #292524;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+.seat-active .bseat-name { color: #f59e0b; }
+
+.seat-folded {
+  opacity: 0.35;
+}
+.seat-folded .bseat-status { color: #ef4444; }
+
+.seat-acted {
+  border-color: #22c55e;
+}
+.seat-acted .bseat-status { color: #22c55e; }
+
+.seat-allin {
+  border-color: #f59e0b;
+  background: #422006;
+}
+.seat-allin .bseat-status { color: #f59e0b; }
+
+.seat-hero-turn {
+  border-color: #3b82f6;
+  background: #1e3a5f;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+  animation: pulse-hero 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-hero {
+  0%, 100% { box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 18px rgba(59, 130, 246, 0.7); }
+}
+
+/* Action panel */
+.action-panel {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 10px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
 }
 
-.action-row {
+.action-label {
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: bold;
+}
+
+.action-btn-group {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.action-opt-btn {
+  padding: 8px 12px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: #334155;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.action-opt-btn:hover {
+  background: #475569;
+}
+
+.action-opt-btn.confirm {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+.action-input-row {
+  display: flex;
+  gap: 6px;
   align-items: center;
 }
 
-.action-type {
+.action-amount-input {
   flex: 1;
-  padding: 10px;
-  border: 1px solid #334155;
+  padding: 8px 10px;
+  border: 1px solid #475569;
   border-radius: 6px;
-  background: #1e293b;
+  background: #0f172a;
   color: #e2e8f0;
   font-size: 0.9rem;
 }
 
-.action-amount {
-  width: 80px;
-  padding: 10px;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  background: #1e293b;
-  color: #e2e8f0;
-  font-size: 0.9rem;
-}
-
-.action-amount:disabled,
-.action-type:disabled {
-  opacity: 0.5;
-}
-
-.action-locked {
-  opacity: 0.6;
-}
-
-.add-action-btn {
-  padding: 8px;
-  border: 1px dashed #334155;
-  border-radius: 6px;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-}
-
-.add-action-btn:hover {
-  border-color: #64748b;
-  color: #e2e8f0;
+/* Hero advice button */
+.hero-advice-btn {
+  margin-top: 4px;
 }

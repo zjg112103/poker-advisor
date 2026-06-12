@@ -2,7 +2,7 @@
  * Hole Cards Screen - lets the user select exactly two hole cards.
  * Uses createCardGrid from card-selector.js for the visual grid.
  */
-import { cardToString, SUIT_SYMBOLS, RANK_VALUES } from '../../engine/card.js';
+import { cardToString } from '../../engine/card.js';
 import { createCardGrid } from '../card-selector.js';
 
 /**
@@ -15,27 +15,33 @@ export function createHoleCardsScreen(gameState, onComplete) {
   const screen = document.createElement('div');
   screen.className = 'screen hole-cards-screen';
 
-  // -- header --------------------------------------------------------------
+  // -- header
   const header = document.createElement('h2');
   header.className = 'screen-header';
   header.textContent = '选择你的底牌';
   screen.appendChild(header);
 
-  // -- state ---------------------------------------------------------------
+  // -- hint
+  const hint = document.createElement('div');
+  hint.className = 'selected-info';
+  hint.textContent = '点击选牌，再次点击取消选择';
+  screen.appendChild(hint);
+
+  // -- state
   const selectedCards = [];
 
-  // -- card grid -----------------------------------------------------------
+  // -- card grid
   const usedCards = [];
   const grid = createCardGrid(handleSelect, usedCards, gameState.isShortDeck);
   screen.appendChild(grid);
 
-  // -- selected cards display ----------------------------------------------
+  // -- selected cards display
   const infoLine = document.createElement('div');
   infoLine.className = 'selected-info';
   infoLine.textContent = '已选: 0/2';
   screen.appendChild(infoLine);
 
-  // -- confirm button ------------------------------------------------------
+  // -- confirm button
   const confirmBtn = document.createElement('button');
   confirmBtn.className = 'primary-btn';
   confirmBtn.textContent = '确认';
@@ -47,36 +53,29 @@ export function createHoleCardsScreen(gameState, onComplete) {
   });
   screen.appendChild(confirmBtn);
 
-  // -- handlers ------------------------------------------------------------
+  // -- handlers
 
   function handleSelect(card) {
     const idx = findCardIndex(selectedCards, card);
     if (idx !== -1) {
-      // deselect
       selectedCards.splice(idx, 1);
     } else if (selectedCards.length < 2) {
       selectedCards.push(card);
     } else {
-      // already have 2 cards, ignore
-      return;
+      return false; // reject - already full
     }
     updateUI();
+    return true;
   }
 
   function updateUI() {
     const count = selectedCards.length;
     const names = selectedCards.map(cardToString).join(' ');
     infoLine.textContent = count > 0
-      ? `已选: ${count}/2 \u2014 ${names}`
+      ? '已选: ' + count + '/2 \u2014 ' + names
       : '已选: 0/2';
 
     confirmBtn.disabled = count !== 2;
-
-    // Tell the grid which cards are currently selected so it can
-    // highlight / disable them visually.
-    if (typeof grid.setSelected === 'function') {
-      grid.setSelected(selectedCards);
-    }
   }
 
   return screen;
