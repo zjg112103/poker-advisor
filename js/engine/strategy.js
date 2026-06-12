@@ -3,7 +3,7 @@
  *
  * All logic optimized for 36-card short deck where flush > full house.
  * Uses EV calculation, board texture analysis, draw detection,
- * and position-based opening ranges.
+ * SPR-aware decisions, and position-based equity realization.
  */
 import {
   calculateEV, suggestBetSize, shortDeckHandScore,
@@ -12,25 +12,53 @@ import {
 import { analyzeBoard } from './board-analysis.js';
 
 // ---------------------------------------------------------------------------
+// Equity Realization by position
+// ---------------------------------------------------------------------------
+
+const EQ_REALIZATION = {
+  BTN: 1.08, CO: 1.05, HJ: 1.02,
+  MP1: 1.01, MP: 1.00, UTG1: 0.96, UTG: 0.95,
+  SB: 0.93, BB: 0.95,
+};
+
+function realizeEquity(rawEquity, position) {
+  const mult = EQ_REALIZATION[(position || '').toUpperCase()] || 1.0;
+  return Math.min(1, Math.max(0, rawEquity * mult));
+}
+
+// ---------------------------------------------------------------------------
 // Post-flop recommendation
 // ---------------------------------------------------------------------------
 
 /**
  * Get a post-flop recommendation for short deck.
- * Requires holeCards and boardCards for board texture / draw analysis.
+ * @param {number} spr - Stack-to-Pot Ratio (heroStack / potSize)
  */
 export function getRecommendation({
   equity, potOdds, potSize, callAmount, stage, position,
   isShortDeck, numPlayers,    // kept for signature compat, ignored
-  holeCards, boardCards,       // NEW: needed for draw analysis
+  holeCards, boardCards,
+  spr,                        // Stack-to-Pot Ratio
 }) {
   const board = boardCards || [];
   const analysis = analyzeBoard(board, holeCards);
-  const eq01 = equity / 100;
+
+  // Apply equity realization (position-based adjustment)
+  const rawEq = equity / 100;
+  const eq01 = realizeEquity(rawEq, position);
+  const realizedPct = eq01 * 100;
+
+  // SPR defaults to infinity if not provided (deep stack)
+  const sprVal = spr != null ? spr : Infinity;
+
+  // --- SPR-based short stack mode ---
+  if (sprVal < 4 && callAmount > 0) {
+    return shortStackDecision(realizedPct, eq01, potSize, callAmount, analysis);
+  }
 
   // --- No bet to call: check or bet ---
   if (callAmount === 0) {
-    return noBetDecision(equity, eq01, potSize, stage, analysis);
+    return noBetDecision(realizedPct, eq01, potSize, stage, analysis, sprVal);
   }
 
   // --- EV of calling ---
@@ -44,21 +72,21 @@ export function getRecommendation({
   const evAdj = calculateEV(eqAdj, potSize, callAmount);
 
   // --- Strong hand: value raise ---
-  if (equity > 70 && evCall > 0) {
-    const amt = valueRaiseSize(equity, potSize, callAmount, analysis);
+  if (realizedPct > 70 && evCall > 0) {
+    const amt = valueRaiseSize(realizedPct, potSize, callAmount, analysis, sprVal);
     return {
       action: 'RAISE', raiseAmount: amt,
-      confidence: equity > 80 ? 'HIGH' : 'MEDIUM',
-      reason: reason(equity, evCall, 'value_raise', analysis),
+      confidence: realizedPct > 80 ? 'HIGH' : 'MEDIUM',
+      reason: reason(realizedPct, evCall, 'value_raise', analysis),
     };
   }
 
   // --- Strong draw semi-bluff ---
-  if (analysis.totalOuts >= 12 && equity > 40 && callAmount <= potSize * 0.5) {
+  if (analysis.totalOuts >= 12 && realizedPct > 40 && callAmount <= potSize * 0.5) {
     return {
       action: 'RAISE', raiseAmount: Math.round(potSize * 0.5),
       confidence: 'MEDIUM',
-      reason: reason(equity, evCall, 'semibluff', analysis),
+      reason: reason(realizedPct, evCall, 'semibluff', analysis),
     };
   }
 
@@ -67,7 +95,7 @@ export function getRecommendation({
     return {
       action: 'CALL',
       confidence: evAdj > callAmount * 0.5 ? 'HIGH' : 'MEDIUM',
-      reason: reason(equity, evCall, 'call', analysis),
+      reason: reason(realizedPct, evCall, 'call', analysis),
     };
   }
 
@@ -75,7 +103,7 @@ export function getRecommendation({
   if (evAdj >= -callAmount * 0.1 && stage !== 'river') {
     return {
       action: 'CALL', confidence: 'LOW',
-      reason: reason(equity, evCall, analysis.totalOuts >= 8 ? 'draw_call' : 'marginal_call', analysis),
+      reason: reason(realizedPct, evCall, analysis.totalOuts >= 8 ? 'draw_call' : 'marginal_call', analysis),
     };
   }
 
@@ -83,7 +111,39 @@ export function getRecommendation({
   return {
     action: 'FOLD',
     confidence: evCall < -callAmount * 0.3 ? 'HIGH' : 'MEDIUM',
-    reason: reason(equity, evCall, 'fold', analysis),
+    reason: reason(realizedPct, evCall, 'fold', analysis),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Short-stack mode (SPR < 4)
+// ---------------------------------------------------------------------------
+
+function shortStackDecision(equity, eq01, potSize, callAmount, analysis) {
+  // SPR < 4: very committed, simplify to shove-or-fold
+  if (equity > 55) {
+    return {
+      action: 'RAISE', raiseAmount: potSize + callAmount,
+      confidence: equity > 65 ? 'HIGH' : 'MEDIUM',
+      reason: '胜率' + equity.toFixed(1) + '%，SPR<4短筹全押',
+    };
+  }
+  if (equity > 45) {
+    const evCall = calculateEV(eq01, potSize, callAmount);
+    if (evCall >= 0) {
+      return {
+        action: 'CALL', confidence: 'MEDIUM',
+        reason: '胜率' + equity.toFixed(1) + '%，SPR<4短筹跟注(EV=' + evCall.toFixed(0) + ')',
+      };
+    }
+    return {
+      action: 'FOLD', confidence: 'LOW',
+      reason: '胜率' + equity.toFixed(1) + '%，SPR<4短筹弃牌(EV=' + evCall.toFixed(0) + ')',
+    };
+  }
+  return {
+    action: 'FOLD', confidence: 'HIGH',
+    reason: '胜率' + equity.toFixed(1) + '%，SPR<4短筹弃牌',
   };
 }
 
@@ -91,7 +151,16 @@ export function getRecommendation({
 // No-bet decision (check or bet)
 // ---------------------------------------------------------------------------
 
-function noBetDecision(equity, eq01, potSize, stage, analysis) {
+function noBetDecision(equity, eq01, potSize, stage, analysis, sprVal) {
+  // SPR < 4: commit with strong hand
+  if (sprVal < 4 && equity > 55) {
+    return {
+      action: 'BET', betAmount: potSize,
+      confidence: equity > 65 ? 'HIGH' : 'MEDIUM',
+      reason: '胜率' + equity.toFixed(1) + '%，SPR<4短筹全押',
+    };
+  }
+
   // Strong hand → value bet
   if (equity > 65) {
     const bet = suggestBetSize(eq01);
@@ -122,7 +191,12 @@ function noBetDecision(equity, eq01, potSize, stage, analysis) {
 // Bet sizing helpers
 // ---------------------------------------------------------------------------
 
-function valueRaiseSize(equity, potSize, callAmount, analysis) {
+function valueRaiseSize(equity, potSize, callAmount, analysis, sprVal) {
+  // SPR 4-10: smaller raises to avoid over-committing
+  if (sprVal < 10) {
+    return Math.round(Math.max(potSize * 0.4, callAmount * 2));
+  }
+
   let base;
   if (equity > 85)     base = Math.max(potSize * 0.75, callAmount * 2.5);
   else if (equity > 75) base = Math.max(potSize * 0.6,  callAmount * 2);

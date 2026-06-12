@@ -117,6 +117,7 @@ async function calculateAndShowResult() {
         position: gameState.position,
         holeCards: gameState.holeCards,
         boardCards: [],
+        spr: gameState.getSPR(),
       });
       equityData = {
         equity: simResult.equities[0],
@@ -160,6 +161,7 @@ async function calculateAndShowResult() {
       position: gameState.position,
       holeCards: gameState.holeCards,
       boardCards: gameState.boardCards,
+      spr: gameState.getSPR(),
     });
 
     equityData = {

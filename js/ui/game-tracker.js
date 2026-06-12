@@ -31,12 +31,13 @@ for (let n = 2; n <= 9; n++) {
 }
 
 export class GameState {
-  constructor({ numPlayers, position, isShortDeck = false, bigBlind = 10 }) {
+  constructor({ numPlayers, position, isShortDeck = false, bigBlind = 10, heroStack } = {}) {
     this.numPlayers = numPlayers;
     this.heroPosition = position;
     this.position = position;
     this.isShortDeck = isShortDeck;
     this.bigBlind = bigBlind;
+    this.heroStack = heroStack || bigBlind * 100; // default 100BB
     this.stage = 'setup';
     this.holeCards = [];
     this.boardCards = [];
@@ -220,6 +221,29 @@ export class GameState {
     const heroSeat = this.seats.find(s => s.isHero);
     if (!heroSeat) return this.callAmount;
     return Math.max(0, this.callAmount - heroSeat.roundInvestment);
+  }
+
+  /**
+   * Stack-to-Pot Ratio: how many BB-sized bets fit between stack and pot.
+   * SPR < 4 = committed, 4-12 = value-heavy, 12+ = standard play.
+   */
+  getSPR() {
+    if (this.pot <= 0) return Infinity;
+    return this.heroStack / this.pot;
+  }
+
+  /**
+   * Adjust raw equity for position-based equity realization.
+   * In-position players realize more equity (they act last).
+   */
+  getEquityRealizationMultiplier() {
+    const pos = (this.heroPosition || '').toUpperCase();
+    const multipliers = {
+      BTN: 1.08, CO: 1.05, HJ: 1.02,
+      MP1: 1.01, MP: 1.00, UTG1: 0.96, UTG: 0.95,
+      SB: 0.93, BB: 0.95,
+    };
+    return multipliers[pos] || 1.0;
   }
 
   getPositions() {
