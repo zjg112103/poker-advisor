@@ -115,8 +115,8 @@ async function calculateAndShowResult() {
         callAmount: gameState.callAmount,
         stage: gameState.stage,
         position: gameState.position,
-        isShortDeck: gameState.isShortDeck,
-        numPlayers: gameState.numPlayers,
+        holeCards: gameState.holeCards,
+        boardCards: [],
       });
       equityData = {
         equity: simResult.equities[0],
@@ -158,8 +158,8 @@ async function calculateAndShowResult() {
       callAmount: gameState.callAmount,
       stage: gameState.stage,
       position: gameState.position,
-      isShortDeck: gameState.isShortDeck,
-      numPlayers: gameState.numPlayers,
+      holeCards: gameState.holeCards,
+      boardCards: gameState.boardCards,
     });
 
     equityData = {
